@@ -1,0 +1,24 @@
+# Copyright 2021 David Garcia
+# See LICENSE file for licensing details.
+
+# For a complete list of supported options, see:
+# https://discourse.charmhub.io/t/charm-metadata-v2/3674/15
+name: mongo-express
+display-name: Mongo Express
+description: |
+  mongo-express is a web-based MongoDB admin interface written in Node.js, Express.js, and Bootstrap3.
+summary: |
+  web-based MongoDB admin interface
+
+containers:
+  mongo-express:
+    resource: mongo-express
+
+resources:
+  mongo-express:
+    type: oci-image
+    description: OCI image for mongo-express (mongo-express:0.54.0)
+
+peers:
+  cluster:
+    interface: mongo-express-cluster

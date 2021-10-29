@@ -1,0 +1,13 @@
+# Copyright 2021 David Garcia
+# See LICENSE file for licensing details.
+#
+
+options:
+  web-username:
+    description: Username to access the mongo express UI 
+    type: string
+    default: admin
+  editor-theme:
+    description: mongo-express editor color theme, [more here](http://codemirror.net/demo/theme.html)
+    type: string
+    default: default
