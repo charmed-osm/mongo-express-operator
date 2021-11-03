@@ -1,4 +1,11 @@
+<!-- Copyright 2021 Canonical Ltd.
+See LICENSE file for licensing details. -->
+
 # mongo-express-operator
+
+<a href="https://github.com/psf/black/tree/main">
+    <img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="code style">
+</a>
 
 ## Description
 
@@ -8,13 +15,13 @@ Mongo express is a web-based MongoDB admin interface written in Node.js, Express
 
 Build the charm:
 
-```bash
+```shell
 charmcraft build
 ```
 
 Deploy charm:
 
-```bash
+```shell
 juju deploy ./mongo-express_ubuntu-20.04-amd64.charm --resource mongo-express=mongo-express:0.54.0
 ```
 
@@ -24,16 +31,16 @@ The web ui will be available at port 8081.
 
 Get the UI credentials:
 
-```bash
+```shell
 juju run-action mongo-express/0 get-credentials --wait
 ```
 
 ## OCI Images
 
-- [mongo-express](https://hub.docker.com/layers/mongo-express/library/mongo-express/0.54.0/images/sha256-5bf035faae450d68247fb4364dda361bde60f89de185c179a6eda14e2aa731dc?context=explore) 
+- [mongo-express](https://hub.docker.com/layers/mongo-express/library/mongo-express/0.54.0/images/sha256-5bf035faae450d68247fb4364dda361bde60f89de185c179a6eda14e2aa731dc?context=explore)
 
 ## Contributing
 
-Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines 
+Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines
 on enhancements to this charm following best practice guidelines, and
 `CONTRIBUTING.md` for developer guidance.

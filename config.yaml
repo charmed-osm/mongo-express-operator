@@ -1,13 +1,23 @@
 # Copyright 2021 David Garcia
 # See LICENSE file for licensing details.
-#
 
 options:
   web-username:
-    description: Username to access the mongo express UI 
+    description: Username to access the mongo express UI
     type: string
     default: admin
   editor-theme:
-    description: mongo-express editor color theme, [more here](http://codemirror.net/demo/theme.html)
+    description: |
+      mongo-express editor color theme,
+      [more here](http://codemirror.net/demo/theme.html)
     type: string
     default: default
+  read-only:
+    description: |
+      if read-only is true, components of writing are not visible.
+    type: boolean
+    default: false
+  enable-gridfs:
+    description: Enable gridFS to manage uploaded files.
+    type: boolean
+    default: false
