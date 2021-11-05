@@ -3,9 +3,9 @@ See LICENSE file for licensing details. -->
 
 # mongo-express-operator
 
-<a href="https://github.com/psf/black/tree/main">
-    <img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="code style">
-</a>
+[![codecov](https://codecov.io/gh/davigar15/charm-mongo-express/branch/main/graph/badge.svg?token=QO02OEH639)](https://codecov.io/gh/davigar15/charm-mongo-express)
+[![code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black/tree/main)
+[![Run-Tests](https://github.com/davigar15/charm-mongo-express/actions/workflows/ci.yaml/badge.svg)](https://github.com/davigar15/charm-mongo-express/actions/workflows/ci.yaml)
 
 ## Description
 
