@@ -1,35 +1,45 @@
 #!/usr/bin/env python3
-# Copyright 2021 David Garcia
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
-#
-# Learn more at: https://juju.is/docs/sdk
 
+"""Mongo Express charm module."""
 
 import logging
 import secrets
 
-from ops.charm import (
-    ActionEvent,
-    CharmBase,
-    ConfigChangedEvent,
-    WorkloadEvent,
-)
+from ops.charm import ActionEvent, CharmBase, ConfigChangedEvent, WorkloadEvent
 from ops.framework import StoredState
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus
-from ops.pebble import ConnectionError
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus
 
 from cluster import MongoExpressCluster, MongoExpressClusterEvents
+from utils import EDITOR_THEMES, PORT
 
 logger = logging.getLogger(__name__)
 
+REQUIRED_CONFIG = ("editor-theme", "web-username", "read-only", "enable-gridfs")
 
-class ConfigurationError(Exception):
-    pass
+
+def generate_random_password():
+    """Generates a random password."""
+    return secrets.token_hex(16)
+
+
+class ConfigError(Exception):
+    """Configuration Error Exception."""
+
+    def __init__(self, key, message) -> None:
+        super().__init__()
+        self._key = key
+        self._message = message
+
+    def __str__(self) -> str:
+        """Return exception string."""
+        return f"{self._key}: {self._message}"
 
 
 class MongoExpressCharm(CharmBase):
-    """Charm the service."""
+    """Mongo Express Charm operator."""
 
     _stored = StoredState()
     on = MongoExpressClusterEvents()
@@ -38,33 +48,45 @@ class MongoExpressCharm(CharmBase):
         super().__init__(*args)
         event_observe_mapping = {
             self.on.mongo_express_pebble_ready: self._on_mongo_express_pebble_ready,
-            self.on.cluster_ready: self._on_cluster_ready,
-            self.on.web_password_set: self._on_config_changed,
             self.on.config_changed: self._on_config_changed,
+            self.on.cluster_ready: self._on_cluster_ready,
+            self.on.web_password_changed: self._on_config_changed,
             self.on.get_credentials_action: self._on_get_credentials_action,
         }
         for event, observer in event_observe_mapping.items():
             self.framework.observe(event, observer)
         self.cluster = MongoExpressCluster(self)
-        self._stored.set_default(mongodb_server="mongodb-0.mongodb-endpoints")
+        self._stored.set_default(mongodb_server="mongodb-k8s-0.mongodb-k8s-endpoints")
 
-    def _on_mongo_express_pebble_ready(self, event: WorkloadEvent):
+    @property
+    def container(self):
+        """Property to get mongo-express container."""
+        return self.unit.get_container("mongo-express")
+
+    @property
+    def services(self):
+        """Property to get the services in the container plan."""
+        return self.container.get_plan().services
+
+    def _on_mongo_express_pebble_ready(self, _: WorkloadEvent):
         self._restart()
 
     def _on_config_changed(self, event: ConfigChangedEvent):
-        try:
+        if self.container.can_connect():
             self._restart()
-        except ConnectionError:
+        else:
             logger.info("pebble socket not available, deferring config-changed")
             event.defer()
+            self.unit.status = MaintenanceStatus("waiting for pebble to start")
 
-    def _on_cluster_ready(self, event):
-        if not self.cluster.web_password and self.unit.is_leader():
+    def _on_cluster_ready(self, _):
+        if self.unit.is_leader() and not self.cluster.web_password:
             password = generate_random_password()
             self.cluster.set_web_password(password)
 
     def _on_get_credentials_action(self, event: ActionEvent):
         try:
+            logger.debug("Executing action get-credentials...")
             username = self.config["web-username"]
             password = self.cluster.web_password
             if not username:
@@ -72,8 +94,10 @@ class MongoExpressCharm(CharmBase):
             if not password:
                 raise Exception("password is not defined")
             event.set_results({"username": username, "password": password})
+            logger.info("Action get-credentials successfully executed")
         except Exception as e:
-            event.fail(f"Failed getting the credentials: {event}")
+            logger.error(f"Failed executing action get-credentials. Reason: {e}")
+            event.fail(f"Failed getting the credentials: {e}")
 
     def _restart(self):
         try:
@@ -82,24 +106,23 @@ class MongoExpressCharm(CharmBase):
             self._set_pebble_layer(layer)
             self._restart_service()
             self.unit.status = ActiveStatus()
-        except ConfigurationError as e:
+        except ConfigError as e:
+            logger.info(f"Charm entered to BlockedStatus. Reason: {e}")
             self.unit.status = BlockedStatus(str(e))
 
     def _check_configuration(self):
-        if self.config.get("editor-theme") not in EDITOR_THEMES:
-            raise ConfigurationError("invalid value of config `editor-theme`")
-        if not self._stored.mongodb_server:
-            raise ConfigurationError("need mongodb relation or config")
-        if not self.cluster.web_password:
-            raise ConfigurationError("cluster web-password has not been set yet")
+        for config_name in REQUIRED_CONFIG:
+            if config_name not in self.config:
+                raise ConfigError(key=config_name, message="missing configuration.")
+        if self.config["editor-theme"] not in EDITOR_THEMES:
+            raise ConfigError(key="editor-theme", message="invalid value.")
+        logger.info("Charm configuration: checked.")
 
     def _restart_service(self):
-        container = self.unit.get_container("mongo-express")
-        if "mongo-express" in container.get_plan().services:
-            service = container.get_service("mongo-express")
-            if service.is_running():
-                container.stop("mongo-express")
-            container.start("mongo-express")
+        container = self.container
+        if "mongo-express" in self.services:
+            container.restart("mongo-express")
+            logger.info("mongo-express service has been restarted")
 
     def _get_pebble_layer(self):
         return {
@@ -112,96 +135,39 @@ class MongoExpressCharm(CharmBase):
                     "command": "tini -s -- /docker-entrypoint.sh",
                     "startup": "enabled",
                     "environment": {
-                        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-                        "NODE_VERSION": "12.22.7",
-                        "YARN_VERSION": "1.22.15",
-                        "MONGO_EXPRESS": "0.54.0",
-                        "ME_CONFIG_EDITORTHEME": self.config["editor-theme"],
                         "ME_CONFIG_MONGODB_SERVER": self._stored.mongodb_server,
-                        "ME_CONFIG_MONGODB_ENABLE_ADMIN": "true",
+                        "ME_CONFIG_MONGODB_PORT": 27017,
+                        # "ME_CONFIG_MONGODB_URL": "",
+                        "ME_CONFIG_MONGODB_ENABLE_ADMIN": True,
+                        # "ME_CONFIG_MONGODB_ADMINUSERNAME": "",
+                        # "ME_CONFIG_MONGODB_ADMINPASSWORD": "",
+                        # "ME_CONFIG_MONGODB_AUTH_DATABASE": "",
+                        # "ME_CONFIG_MONGODB_AUTH_USERNAME": "",
+                        # "ME_CONFIG_MONGODB_AUTH_PASSWORD": "",
+                        "ME_CONFIG_SITE_BASEURL": "/",
+                        "ME_CONFIG_SITE_COOKIESECRET": "cookiesecret",
+                        "ME_CONFIG_SITE_SESSIONSECRET": "sessionsecret",
                         "ME_CONFIG_BASICAUTH_USERNAME": self.config["web-username"],
                         "ME_CONFIG_BASICAUTH_PASSWORD": self.cluster.web_password,
-                        "VCAP_APP_HOST": "0.0.0.0",
+                        # "ME_CONFIG_REQUEST_SIZE": "100kb",
+                        "ME_CONFIG_OPTIONS_EDITORTHEME": self.config["editor-theme"],
+                        "ME_CONFIG_OPTIONS_READONLY": self.config["read-only"],
+                        # "ME_CONFIG_SITE_SSL_ENABLED": False,
+                        # "ME_CONFIG_MONGODB_SSLVALIDATE": True,
+                        # "ME_CONFIG_SITE_SSL_CRT_PATH": "",
+                        # "ME_CONFIG_SITE_SSL_KEY_PATH": "",
+                        "ME_CONFIG_SITE_GRIDFS_ENABLED": self.config["enable-gridfs"],
+                        # "VCAP_APP_HOST": "",
+                        "VCAP_APP_PORT": PORT,
+                        # "ME_CONFIG_MONGODB_CA_FILE": "",
                     },
                 }
             },
         }
 
     def _set_pebble_layer(self, layer):
-        container = self.unit.get_container("mongo-express")
-        container.add_layer("mongo-express", layer, combine=True)
+        self.container.add_layer("mongo-express", layer, combine=True)
 
 
-def generate_random_password():
-    return secrets.token_hex(16)
-
-
-EDITOR_THEMES = (
-    "default",
-    "3024-day",
-    "3024-night",
-    "abbott",
-    "abcdef",
-    "ambiance",
-    "ayu-dark",
-    "ayu-mirage",
-    "base16-dark",
-    "base16-light",
-    "bespin",
-    "blackboard",
-    "cobalt",
-    "colorforth",
-    "darcula",
-    "dracula",
-    "duotone-dark",
-    "duotone-light",
-    "eclipse",
-    "elegant",
-    "erlang-dark",
-    "gruvbox-dark",
-    "hopscotch",
-    "icecoder",
-    "idea",
-    "isotope",
-    "juejin",
-    "lesser-dark",
-    "liquibyte",
-    "lucario",
-    "material",
-    "material-darker",
-    "material-palenight",
-    "material-ocean",
-    "mbo",
-    "mdn-like",
-    "midnight",
-    "monokai",
-    "moxer",
-    "neat",
-    "neo",
-    "night",
-    "nord",
-    "oceanic-next",
-    "panda-syntax",
-    "paraiso-dark",
-    "paraiso-light",
-    "pastel-on-dark",
-    "railscasts",
-    "rubyblue",
-    "seti",
-    "shadowfox",
-    "solarized dark",
-    "solarized light",
-    "the-matrix",
-    "tomorrow-night-bright",
-    "tomorrow-night-eighties",
-    "ttcn",
-    "twilight",
-    "vibrant-ink",
-    "xq-dark",
-    "xq-light",
-    "yeti",
-    "yonce",
-    "zenburn",
-)
 if __name__ == "__main__":
     main(MongoExpressCharm, use_juju_for_storage=True)

@@ -1,5 +1,5 @@
-# Copyright 2021 David Garcia
+# Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
-#
+
 get-credentials:
   description: Get credentials to access the web interface
