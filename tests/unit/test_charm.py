@@ -93,6 +93,22 @@ def test_get_credentials_action_failed(mocker: MockerFixture, harness: Harness):
     mock_event.fail.assert_called_with("Failed getting the credentials: password is not defined")
 
 
+def test_change_password_action_success(mocker: MockerFixture, harness: Harness):
+    harness.set_leader(True)
+    mock_event = mocker.Mock()
+    harness.charm._on_change_password_action(mock_event)
+    mock_event.set_results.assert_called_once()
+
+
+def test_change_password_action_failed(mocker: MockerFixture, harness: Harness):
+    mock_event = mocker.Mock()
+    harness.charm._on_change_password_action(mock_event)
+    mock_event.set_results.assert_not_called()
+    mock_event.fail.assert_called_with(
+        "Failed changing the credentials: only the leader can change the password."
+    )
+
+
 def test_missing_read_only_configuration(mocker: MockerFixture, harness: Harness):
     harness._backend._config = {}
     harness.update_config(

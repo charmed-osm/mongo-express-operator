@@ -52,6 +52,7 @@ class MongoExpressCharm(CharmBase):
             self.on.cluster_ready: self._on_cluster_ready,
             self.on.web_password_changed: self._on_config_changed,
             self.on.get_credentials_action: self._on_get_credentials_action,
+            self.on.change_password_action: self._on_change_password_action,
         }
         for event, observer in event_observe_mapping.items():
             self.framework.observe(event, observer)
@@ -98,6 +99,17 @@ class MongoExpressCharm(CharmBase):
         except Exception as e:
             logger.error(f"Failed executing action get-credentials. Reason: {e}")
             event.fail(f"Failed getting the credentials: {e}")
+
+    def _on_change_password_action(self, event: ActionEvent):
+        try:
+            if not self.unit.is_leader():
+                raise Exception("only the leader can change the password.")
+            password = generate_random_password()
+            self.cluster.set_web_password(password)
+            event.set_results({"new-password": password})
+        except Exception as e:
+            logger.error(f"Failed executing action change-password. Reason: {e}")
+            event.fail(f"Failed changing the credentials: {e}")
 
     def _restart(self):
         try:
