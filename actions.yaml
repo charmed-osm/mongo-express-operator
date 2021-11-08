@@ -3,3 +3,5 @@
 
 get-credentials:
   description: Get credentials to access the web interface
+change-password:
+  description: Change the web interface password
