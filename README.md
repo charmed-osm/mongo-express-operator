@@ -1,7 +1,7 @@
 <!-- Copyright 2021 Canonical Ltd.
 See LICENSE file for licensing details. -->
 
-# mongo-express-operator
+# Mongo Express Operator
 
 [![codecov](https://codecov.io/gh/davigar15/charm-mongo-express/branch/main/graph/badge.svg?token=QO02OEH639)](https://codecov.io/gh/davigar15/charm-mongo-express)
 [![code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black/tree/main)
@@ -13,26 +13,39 @@ Mongo express is a web-based MongoDB admin interface written in Node.js, Express
 
 ## Usage
 
-Build the charm:
+The Mongo Express Operator may be deployed using the Juju command line as in
 
 ```shell
-charmcraft build
+$ juju add-model mongo-express
+$ juju deploy mongodb-k8s  # deploy mongodb operator
+$ juju deploy davigar15-mongo-express --channel edge
 ```
 
-Deploy charm:
+## Accessing the web UI
+
+The IP of the Mongo Express User Interface may be found executing the following Juju command, in the units section.
 
 ```shell
-juju deploy ./mongo-express_ubuntu-20.04-amd64.charm --resource mongo-express=mongo-express:0.54.0
+$ juju status davigar15-mongo-express/0
 ```
 
-The web ui will be available at port 8081.
+The web UI will be available at port 8081.
 
-## Actions
-
-Get the UI credentials:
+To access the User Interface you need to get the credentials, that can be retrieved by executing the following Juju action.
 
 ```shell
-juju run-action mongo-express/0 get-credentials --wait
+$ juju run-action davigar15-mongo-express/0 get-credentials --wait
+unit-davigar15-mongo-express-0:
+  UnitId: davigar15-mongo-express/0
+  id: "14"
+  results:
+    password: ********************
+    username: admin
+  status: completed
+  timing:
+    completed: 2021-11-08 09:48:15 +0000 UTC
+    enqueued: 2021-11-08 09:48:11 +0000 UTC
+    started: 2021-11-08 09:48:15 +0000 UTC
 ```
 
 ## OCI Images

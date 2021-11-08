@@ -51,14 +51,12 @@ charmcraft pack
 
 ```bash
 # Create a model
-juju add-model mongo-express
+juju add-model test-mongo-express
 # Enable DEBUG logging
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
 # Deploy the charm
-juju deploy ./mongo-express_ubuntu-20.04-amd64.charm \
+juju deploy ./davigar15-mongo-express_ubuntu-20.04-amd64.charm \
   --resource mongo-express-image=mongo-express:0.54.0
-# Relate to mongo db
-juju relate mongo-express mongodb
 # Get UI credentials
-juju run-action mongo-express/0 get-credentials --wait
+juju run-action davigar15-mongo-express/0 get-credentials --wait
 ```

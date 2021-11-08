@@ -1,7 +1,7 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-name: mongo-express
+name: davigar15-mongo-express
 display-name: Mongo Express
 description: |
   mongo-express is a web-based MongoDB admin interface
