@@ -187,5 +187,5 @@ class MongoExpressCharm(CharmBase):
         return self.config.get("mongo-url") or self._stored.mongodb_server
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no-cover
     main(MongoExpressCharm, use_juju_for_storage=True)
