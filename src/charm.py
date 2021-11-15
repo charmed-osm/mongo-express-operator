@@ -95,7 +95,7 @@ class MongoExpressCharm(CharmBase):
             if not password:
                 raise Exception("password is not defined")
             event.set_results({"username": username, "password": password})
-            logger.info("Action get-credentials successfully executed")
+            logger.info("Action get-credentials successfully executed.")
         except Exception as e:
             logger.error(f"Failed executing action get-credentials. Reason: {e}")
             event.fail(f"Failed getting the credentials: {e}")
@@ -104,9 +104,11 @@ class MongoExpressCharm(CharmBase):
         try:
             if not self.unit.is_leader():
                 raise Exception("only the leader can change the password.")
+            logger.debug("Changing password...")
             password = generate_random_password()
             self.cluster.set_web_password(password)
             event.set_results({"new-password": password})
+            logger.info("Password successfully changed.")
         except Exception as e:
             logger.error(f"Failed executing action change-password. Reason: {e}")
             event.fail(f"Failed changing the credentials: {e}")
@@ -147,7 +149,7 @@ class MongoExpressCharm(CharmBase):
                     "command": "tini -s -- /docker-entrypoint.sh",
                     "startup": "enabled",
                     "environment": {
-                        "ME_CONFIG_MONGODB_SERVER": self._stored.mongodb_server,
+                        "ME_CONFIG_MONGODB_SERVER": self._mongo_url,
                         "ME_CONFIG_MONGODB_PORT": 27017,
                         # "ME_CONFIG_MONGODB_URL": "",
                         "ME_CONFIG_MONGODB_ENABLE_ADMIN": True,
@@ -179,6 +181,10 @@ class MongoExpressCharm(CharmBase):
 
     def _set_pebble_layer(self, layer):
         self.container.add_layer("mongo-express", layer, combine=True)
+
+    @property
+    def _mongo_url(self):
+        return self.config.get("mongo-url") or self._stored.mongodb_server
 
 
 if __name__ == "__main__":

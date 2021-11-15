@@ -21,3 +21,6 @@ options:
     description: Enable gridFS to manage uploaded files.
     type: boolean
     default: false
+  mongo-url:
+    description: Mongo URL
+    type: string
